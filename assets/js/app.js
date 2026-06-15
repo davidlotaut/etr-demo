@@ -1,7 +1,7 @@
 // ETR — orchestrateur : session, shell, navigation, switch de rôle.
 import { getState, subscribe, resetDemo, correspondants, getCorrespondant, patients, patientsOf } from './store.js';
 import { icon, escapeHtml, confirmModal, toast } from './ui.js';
-import { renderLogin } from './views/login.js';
+import { renderLogin, pickCorrespondant } from './views/login.js';
 import { renderPraticien } from './views/praticien.js';
 import { renderCabinet } from './views/cabinet.js';
 
@@ -14,9 +14,7 @@ function saveSession() { localStorage.setItem(SKEY, JSON.stringify(session)); }
 
 function syncGlobals() { const s = getState(); window.__ETR_TODAY__ = s.today; window.__ETR_CABINET__ = s.cabinet; }
 
-/* ---------- Boot ---------- */
-syncGlobals();
-mount();
+/* ---------- Boot : voir fin de fichier (après initialisation des const) ---------- */
 
 function mount() {
   if (!session.role) return renderLogin(root, enter);
@@ -90,11 +88,9 @@ function renderNav() {
 function bindShell() {
   document.querySelectorAll('#roleSwitch [data-r]').forEach((b) => b.addEventListener('click', () => {
     const r = b.dataset.r;
-    if (r === session.role) return;
-    if (r === 'praticien') {
-      const cid = session.corId || correspondants().sort((a, b) => patientsOf(b.id).length - patientsOf(a.id).length)[0].id;
-      enter('praticien', cid);
-    } else enter('cabinet');
+    // « Correspondant » redemande toujours quel correspondant (et permet d'en changer)
+    if (r === 'praticien') pickCorrespondant(enter);
+    else if (session.role !== 'cabinet') enter('cabinet');
   }));
   document.querySelector('[data-reset]').addEventListener('click', () => confirmModal('Réinitialiser la démonstration ?', 'Toutes vos modifications (créations, suppressions) seront effacées et les données fictives d\'origine restaurées.', () => { resetDemo(); syncGlobals(); toast('Démo réinitialisée.'); renderNav(); renderContent(); }, false));
   document.querySelector('[data-logout]').addEventListener('click', logout);
@@ -129,3 +125,7 @@ function runSearch(q) {
 }
 
 subscribe(() => { /* persistance gérée dans le store ; on rafraîchit les compteurs */ if (document.getElementById('nav')) renderNav(); });
+
+/* ---------- Boot ---------- */
+syncGlobals();
+mount();

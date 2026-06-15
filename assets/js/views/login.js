@@ -49,18 +49,27 @@ export function renderLogin(root, onEnter) {
   root.querySelector('[data-role="praticien"]').addEventListener('click', () => pickCorrespondant(onEnter));
 }
 
-function pickCorrespondant(onEnter) {
-  const top = correspondants().map((c) => ({ c, s: statsCorrespondant(c.id) })).sort((a, b) => b.s.enCours - a.s.enCours).slice(0, 8);
+export function pickCorrespondant(onEnter) {
+  const all = correspondants().map((c) => ({ c, s: statsCorrespondant(c.id) }))
+    .sort((a, b) => b.s.enCours - a.s.enCours || b.s.ca - a.s.ca);
+  const item = ({ c, s }) => `<button class="who-opt" data-cid="${c.id}" data-name="${escapeHtml((c.label + ' ' + c.ville).toLowerCase())}">
+      <div class="ic t" style="font-family:var(--serif);font-weight:600">${escapeHtml((c.prenom[0] || '') + (c.nom[0] || ''))}</div>
+      <div><b>${escapeHtml(c.label)}</b><small>${escapeHtml(c.ville)} · ${s.enCours} patient(s) en cours</small></div>
+      <div class="arr">${icon('arrow')}</div>
+    </button>`;
   openModal({
-    title: 'Entrer comme correspondant', width: 480,
-    bodyHTML: `<p style="margin:-4px 0 4px;color:var(--ink-soft);font-size:13.5px">Sélectionnez un correspondant pour voir son espace de suivi (ses patients adressés).</p>
-      <div class="who-pick">
-        ${top.map(({ c, s }) => `<button class="who-opt" data-cid="${c.id}">
-          <div class="ic t" style="font-family:var(--serif);font-weight:600">${escapeHtml((c.prenom[0] || '') + (c.nom[0] || ''))}</div>
-          <div><b>${escapeHtml(c.label)}</b><small>${escapeHtml(c.ville)} · ${s.enCours} patient(s) en cours</small></div>
-          <div class="arr">${icon('arrow')}</div>
-        </button>`).join('')}
-      </div>`,
-    onMount: (sc) => sc.querySelectorAll('[data-cid]').forEach((b) => b.addEventListener('click', () => { closeModal(); onEnter('praticien', b.dataset.cid); })),
+    title: 'Entrer comme correspondant', width: 500,
+    bodyHTML: `<p style="margin:-4px 0 10px;color:var(--ink-soft);font-size:13.5px">Sélectionnez le correspondant dont vous voulez voir l'espace de suivi (ses patients adressés).</p>
+      <div class="picker-search"><span>${icon('search')}</span><input id="corSearch" placeholder="Rechercher un correspondant ou une ville…" autocomplete="off"></div>
+      <div class="who-pick" id="corList" style="max-height:46vh;overflow:auto;padding-right:2px">${all.map(item).join('')}</div>`,
+    onMount: (sc) => {
+      sc.querySelectorAll('[data-cid]').forEach((b) => b.addEventListener('click', () => { closeModal(); onEnter('praticien', b.dataset.cid); }));
+      const search = sc.querySelector('#corSearch');
+      search.addEventListener('input', () => {
+        const q = search.value.trim().toLowerCase();
+        sc.querySelectorAll('#corList [data-cid]').forEach((b) => { b.style.display = b.dataset.name.includes(q) ? '' : 'none'; });
+      });
+      setTimeout(() => search.focus(), 50);
+    },
   });
 }
